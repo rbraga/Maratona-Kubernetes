@@ -1,0 +1,132 @@
+docker build -t api-herois .
+
+docker run -p 3000:3000 --link mongodb:mongodb -e MONGO_URL=mongodb api-herois
+
+docker run -d  --name mongodb mongodb:3.5
+
+docker login
+
+docker build -t devrbraga/api-herois:v1 .
+
+docker push devrbraga/api-herois:v1
+
+az account set --subscription "Free Trial"
+
+az group create --name k8s-curso --location eastus
+
+az acr create --resource-group k8s-curso --name k8sdevrbraga --sku Basic
+
+k8sdevrbraga.azurecr.io
+
+az acr login --name k8sdevrbraga   
+
+docker tag devrbraga/api-herois:v1m k8sdevrbraga.azurecr.io/api-herois:v1
+
+docker push k8sdevrbraga.azurecr.io/api-herois:v1
+
+ACR=k8sdevrbraga
+RESOURCE=k8s-curso
+LOCATION=eastus
+
+#-------------------------- CONTAINER SERVICES
+az container create --resource-group k8s-curso \
+    --name mongodb --image mongo:3.5 \
+    --cpu 1 --memory 1 \
+    --port 27017 \
+    --ip-address public
+
+az container logs --resource-group k8s-curso --name mongodb
+
+az container show --resource-group k8s-curso --name mongodb --query ipAddress.ip
+MONGO_URL=20.42.36.175
+
+az container create --resource-group k8s-curso \
+    --name api-herois --image k8sdevrbraga.azurecr.io/api-herois:v1 \
+    --cpu 1 --memory 1 \
+    --port 3000 \
+    --environment-variables MONGO_URL=20.42.36.175 \
+    --registry-username k8sdevrbraga \
+    --registry-password YOUR_PASSWORD \
+    --ip-address public
+
+PASS=YOUR_PASSWORD
+    
+az acr credential show -n k8sdevrbraga --query passwords[0].value
+
+52.152.194.251:3000
+
+az container logs --resource-group k8s-curso --name api-herois
+
+#---------------------------- AKS
+
+az aks create -g k8s-curso \
+    --name k8s-cluster \
+    --dns-name-prefix k8s-cluster \
+    --generate-ssh-keys \
+    --node-count 2
+    
+az aks install-cli
+
+kubectl get nodes
+
+az aks get-credentials --resource-group k8s-curso --name k8s-cluster
+
+# kubeclt 1.16+
+kubectl create clusterrolebinding kubernetes-dashboard --clusterrole=cluster-admin --serviceaccount=kube-system:kubernetes-dashboard
+
+az aks browse --resource-group k8s-curso --name k8s-cluster
+
+## -------------- K8s - Pods
+
+kubectl run mongodb --image mongo:3.5 --port 27017
+
+kubectl get pods
+
+kubectl delete pod mongodb
+
+kubectl describe pods mongodb
+
+kubectl top pods mongodb
+
+kubectl get pods --output=wide
+
+10.244.1.4
+
+kubectl run api-herois \
+    --image devrbraga/api-herois:v1 \
+    --env "MONGO_URL=10.244.1.4" \
+    --env "PORT=4000" \
+    --replicas 2
+
+kubectl logs api-herois
+
+kubectl expose pod api-herois --port 4000 --type LoadBalancer
+
+-- declarativo
+1º arquivo manifesto -> .json ou yaml
+2º kubectl create -f herois-pod.json
+3º kubectl delete pod api-herois-pod
+
+kubectl describe pod api-herois-pod
+
+kubectl delete pod -l version=v1
+
+kubectl logs api-herois-pod
+kubectl exec -it api-herois-pod -- /bin/sh
+kubectl explain pods
+
+kubectl get pod api-herois-pod -o json | grep podIP
+
+
+##----------- SECRETS
+kubectl create -f 2.\ secrets/herois-pod.json 
+
+## SERVICES
+
+#-- iterativa
+kubectl create -f 3.\ replicasets/herois-rc.json
+kubectl get svc
+
+kubectl expose -f 3.\ replicasets/herois-rc.json \
+    --port 4000 \
+    --type LoadBalancer

@@ -1,0 +1,1 @@
+kubectl create -f https://raw.githubusercontent.com/kubernetes-retired/kubedash/master/deploy/bundle.yaml
